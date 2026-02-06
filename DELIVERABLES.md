@@ -22,3 +22,6 @@ To create changes for github repo:
 git add .
 git commit -m "Describe change"
 git push
+
+to run python demo: 
+python scripts/04_demo.py --input "data/raw/Friday-WorkingHours-Afternoon-PortScan.pcap_ISCX.csv" --threshold 0.8 --rebuild --retrain
