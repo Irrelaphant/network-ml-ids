@@ -25,3 +25,7 @@ git push
 
 to run python demo: 
 python scripts/04_demo.py --input "data/raw/Friday-WorkingHours-Afternoon-PortScan.pcap_ISCX.csv" --threshold 0.8 --rebuild --retrain
+
+
+the threshhold dictates how noisy you want your alerts to be 
+

@@ -1,42 +1,99 @@
 # scripts/02_train.py
-from pathlib import Path
+"""
+Train a baseline ML IDS model on a processed dataset.
+
+- Loads processed CSV (built by scripts/01_build_dataset.py)
+- Day-based evaluation by default: train on non-Friday, test on Friday
+- Trains a RandomForest baseline inside a Pipeline (median imputer + RF)
+- Saves model artifact, feature list, and metrics JSON
+
+Examples:
+  # Train on sampled dataset
+  python scripts/02_train.py --data data/processed/dataset_sampled.csv --tag sampled
+
+  # Train on full dataset
+  python scripts/02_train.py --data data/processed/dataset_full.csv --tag full
+
+  # If full dataset is too large, train on a subset of rows
+  python scripts/02_train.py --data data/processed/dataset_full.csv --train_sample_rows 1000000 --tag full_1m
+"""
+
+from __future__ import annotations
+
+import argparse
 import json
+from pathlib import Path
+
 import joblib
 import pandas as pd
-#from sklearn.model_selection import train_test_split
-from sklearn.metrics import confusion_matrix, classification_report
-from sklearn.pipeline import Pipeline
-from sklearn.impute import SimpleImputer
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.impute import SimpleImputer
+from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.pipeline import Pipeline
 
-DATA_PATH = Path("data/processed/dataset_v1.csv")
-MODEL_PATH = Path("models/rf_v1.joblib")
-FEATURES_PATH = Path("models/features_v1.json")
-METRICS_PATH = Path("reports/metrics_v1.json")
 
 def main():
-    if not DATA_PATH.exists():
-        raise FileNotFoundError(f"Missing {DATA_PATH}. Run scripts/01_build_dataset.py first.")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--data", default="data/processed/dataset_v1.csv", help="Processed dataset CSV path")
+    parser.add_argument("--tag", default="v1", help="Suffix tag used for output artifact filenames")
 
-    MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
-    FEATURES_PATH.parent.mkdir(parents=True, exist_ok=True)
-    METRICS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    # Practical knobs
+    parser.add_argument("--n_estimators", type=int, default=300, help="RandomForest trees")
+    parser.add_argument("--class_weight", default="balanced", help="Use 'balanced' to improve recall")
+    parser.add_argument("--seed", type=int, default=42)
 
-    df = pd.read_csv(DATA_PATH)
+    # If full dataset is huge, optionally downsample training data
+    parser.add_argument("--train_sample_rows", type=int, default=0,
+                        help="If >0, sample this many rows from TRAINING set only")
 
-    # --- Day-based split: train on non-Friday, test on Friday ---
-    if "source_file" not in df.columns:
-        raise ValueError("Expected 'source_file' column. Re-run scripts/01_build_dataset.py first.")
+    # Day split options
+    parser.add_argument("--test_day_keyword", default="Friday",
+                        help="Rows whose source_file contains this keyword become TEST set")
+    args = parser.parse_args()
 
-    is_friday = df["source_file"].astype(str).str.contains("Friday", case=False, na=False)
+    data_path = Path(args.data)
+    if not data_path.exists():
+        raise FileNotFoundError(f"Missing {data_path}. Run scripts/01_build_dataset.py first.")
 
-    train_df = df[~is_friday].copy()
-    test_df = df[is_friday].copy()
+    # Output paths (tagged so you don't overwrite artifacts)
+    model_path = Path(f"models/rf_{args.tag}.joblib")
+    features_path = Path(f"models/features_{args.tag}.json")
+    metrics_path = Path(f"reports/metrics_{args.tag}.json")
 
-    print("[*] Train rows (non-Friday):", len(train_df))
-    print("[*] Test rows (Friday):", len(test_df))
+    model_path.parent.mkdir(parents=True, exist_ok=True)
+    features_path.parent.mkdir(parents=True, exist_ok=True)
+    metrics_path.parent.mkdir(parents=True, exist_ok=True)
+
+    print(f"[*] Loading dataset: {data_path}")
+    df = pd.read_csv(data_path)
+
+    # Basic checks
+    needed = {"is_malicious", "source_file"}
+    missing = needed - set(df.columns)
+    if missing:
+        raise ValueError(f"Dataset missing columns {missing}. Re-run scripts/01_build_dataset.py.")
+
+    # Day-based split: train = not test day, test = test day
+    is_test_day = df["source_file"].astype(str).str.contains(args.test_day_keyword, case=False, na=False)
+
+    train_df = df[~is_test_day].copy()
+    test_df = df[is_test_day].copy()
+
+    if len(test_df) == 0:
+        raise ValueError(
+            f"No rows matched test_day_keyword='{args.test_day_keyword}'. "
+            f"Check source_file values in your dataset."
+        )
+
+    print("[*] Train rows:", len(train_df))
+    print("[*] Test rows:", len(test_df))
     print("[*] Train label distribution:\n", train_df["is_malicious"].value_counts())
     print("[*] Test label distribution:\n", test_df["is_malicious"].value_counts())
+
+    # Optionally sample training set only (helps with huge full datasets)
+    if args.train_sample_rows and args.train_sample_rows > 0 and len(train_df) > args.train_sample_rows:
+        train_df = train_df.sample(n=args.train_sample_rows, random_state=args.seed)
+        print(f"[*] Sampled train_df down to {len(train_df)} rows for training")
 
     y_train = train_df["is_malicious"].astype(int)
     X_train = train_df.drop(columns=["is_malicious", "source_file"], errors="ignore")
@@ -46,9 +103,15 @@ def main():
 
     feature_columns = list(X_train.columns)
 
+    # Pipeline: impute NaNs -> model
     model = Pipeline(steps=[
         ("imputer", SimpleImputer(strategy="median")),
-        ("rf", RandomForestClassifier(n_estimators=300, random_state=42, n_jobs=-1)),
+        ("rf", RandomForestClassifier(
+            n_estimators=args.n_estimators,
+            random_state=args.seed,
+            n_jobs=-1,
+            class_weight=args.class_weight if args.class_weight != "none" else None
+        )),
     ])
 
     print("[*] Training model...")
@@ -63,13 +126,27 @@ def main():
     print("Confusion matrix:\n", cm)
     print("\nReport:\n", classification_report(y_test, preds, digits=4))
 
-    joblib.dump(model, MODEL_PATH)
-    FEATURES_PATH.write_text(json.dumps({"feature_columns": feature_columns}, indent=2))
-    METRICS_PATH.write_text(json.dumps({"confusion_matrix": cm.tolist(), "report": report}, indent=2))
+    # Save artifacts
+    joblib.dump(model, model_path)
+    features_path.write_text(json.dumps({"feature_columns": feature_columns}, indent=2))
+    metrics_path.write_text(json.dumps(
+        {
+            "data": str(data_path),
+            "tag": args.tag,
+            "test_day_keyword": args.test_day_keyword,
+            "train_rows": int(len(train_df)),
+            "test_rows": int(len(test_df)),
+            "n_features": int(len(feature_columns)),
+            "confusion_matrix": cm.tolist(),
+            "report": report,
+        },
+        indent=2
+    ))
 
-    print(f"[+] Saved model: {MODEL_PATH}")
-    print(f"[+] Saved features: {FEATURES_PATH}")
-    print(f"[+] Saved metrics: {METRICS_PATH}")
+    print(f"[+] Saved model: {model_path}")
+    print(f"[+] Saved features: {features_path}")
+    print(f"[+] Saved metrics: {metrics_path}")
+
 
 if __name__ == "__main__":
     main()
