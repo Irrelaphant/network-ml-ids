@@ -8,25 +8,41 @@ import joblib
 import pandas as pd
 import numpy as np
 
-DEFAULT_MODEL_PATH = Path("models/rf_v1.joblib")
-DEFAULT_FEATURES_PATH = Path("models/features_v1.json")
+DEFAULT_MODEL_PATH = Path("models/rf_full.joblib")
+DEFAULT_FEATURES_PATH = Path("models/features_full.json")
 
-DROP_COLS = ["Flow ID", "Timestampe"]
+DROP_COLS = ["Flow ID", "Timestamp"]
 
 def preprocess_for_inference(df:pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]: 
     df = df.copy()
     df.columns = df.columns.str.strip()  # Strip whitespace from column names
 
-    #preserve meta cols for reporting if present
-    meta_cols = [c for c in ["Src IP", "Dst IP", "Src Port", "Dst Port", "Protocol"] if c in df.columns]
+    # Support both CIC-IDS2017 names and shorter names
+    META_CANDIDATES = [
+        "Src IP", "Dst IP", "Src Port", "Dst Port",
+        "Source IP", "Destination IP", "Source Port", "Destination Port",
+        "Protocol", "Timestamp"
+    ]
+
+    meta_cols = [c for c in META_CANDIDATES if c in df.columns]
     meta = df[meta_cols].copy() if meta_cols else pd.DataFrame(index=df.index)
 
-    # Drop label if pressent and drop selected non-feature columns
+    # Normalize column names so SOC output is consistent
+    rename_map = {
+        "Source IP": "Src IP",
+        "Destination IP": "Dst IP",
+        "Source Port": "Src Port",
+        "Destination Port": "Dst Port",
+    }
+    meta = meta.rename(columns=rename_map)
+
+
+    # Drop label if present and drop selected non-feature columns
     df = df.drop(columns=["Label"], errors="ignore")
     df = df.drop(columns=[c for c in DROP_COLS if c in df.columns], errors="ignore")
 
-    # Remove IPs from features (but keep in meta)
-    df = df.drop(columns=["Src IP", "Dst IP"], errors="ignore")
+    # Drop any IP columns to avoid leaking info and for privacy (we keep them in meta for SOC context but not as model features)
+    df = df.drop(columns=["Src IP", "Dst IP", "Source IP", "Destination IP"], errors="ignore")
 
     # Convert to numeric and clean inf
     for col in df.columns:
