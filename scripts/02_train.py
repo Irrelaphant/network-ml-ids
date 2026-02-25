@@ -6,6 +6,23 @@ Pipeline goes as follows: 01_build_dataset.py -> 02_train.py -> 03_predict.py
 This file exists to split data into training and testing sets, train a classifier model, measure the model and then save metrics and artifacts 
 (model file, feature list) for later
 
+This script
+1. loads the processed dataset produced by 01_build_dataset.py
+2. splits rows by day using the 'source_file' column, for example using "Friday" as a keyword to separate test vs train days
+3. seperates target 'is_malicious' from feature columns
+4. Drops metadata columns that shouldn't be used as features such as'source_file'
+5. Trains a scikit-learn pipeline:
+    Simple Imputer with median strategy to handle NaNs 
+    Random Forest classifier with adjustment knobs  
+6. Evaluate predictiosn on the day that's not in training (friday)
+7. Saves a model (.joblib), features (JSON), metrics (JSON) 
+
+design notes:
+    day based split is used instead of random splitting or randomly reorganganzing data to better simulate real world performance on unseen days of traffic
+    binary classification is used as a baseline for simplicity before attempting more complex approaches like anomaly detection
+    random forest is practical baseline for tabular flow features and works well without super extensive tuning and is relatively fast
+    feature columns are saved because inferences must use the same features as training, allowing 03_predict.py to align data with training features
+
 """
 
 from __future__ import annotations

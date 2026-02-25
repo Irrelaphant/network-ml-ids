@@ -1,4 +1,43 @@
+"""
+
+This file makes a scored CSV output based on a trained model, with threshold-based severity levels.
+Training produces a model artifact, but an IDS-like deliverable that needs an inference tool that
+can score new traffic logs and return a ranked list of suspicious logs with context for the SOC to handle.
+This script is the scanning tool that would be used in application to generate alerts on new traffic logs.
+
+this script:
+1. loads a trained model (.joblib) and its feature schema
+2. loadas a input CSV (same format as raw data, but different from processed dataset trained on)
+3. preproccesses input data for inference:
+    strips column whitespace
+    removes non-feature columns
+    keeps meta columns for SOCK context, like IPs and ports but doesn't use them to train 
+    converts feature columns to metric values
+    replaces inf with NaN
+4. aligns input features with columns used during training, adding missing columns with NaN and dropping extra columns
+5. Runs a prediction to get probability score 
+6. Applies a user-defined thresehold to convert probabilities into alerts
+7. writes an output CSV with scores, labels (that are predicted as malicious or not), severity levels, and metadata for SOC context
+
+Why thresheholding?
+    In a legitimate application of an IDS, probability thresheholds control the volume of alerts
+    low threshehold means high sensitivity and a lot of false-positives or noise
+    high threshehold means low sensitivity and fewer false positives, but a lot of missed detections
+    this makes the model usable as an operational tool rather than a fixed program that will miss detections
+
+limitations:
+    uhhh everything here depends on the input CSV lol, all the usable metadata depends on whats in the input csv
+    the script can only report on what the model can see, so if the input csv doesn't have good features, or enough features, 
+    the model won't perform well
+
+
+"""
+
+
+
 # scripts/03_predict.py
+
+
 from __future__ import annotations
 
 from pathlib import Path
