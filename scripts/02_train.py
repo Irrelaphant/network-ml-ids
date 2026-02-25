@@ -1,21 +1,11 @@
 # scripts/02_train.py
 """
-Train a baseline ML IDS model on a processed dataset.
+Train a baseline machine learning IDS classifier on a processed dataset.
+Pipeline goes as follows: 01_build_dataset.py -> 02_train.py -> 03_predict.py
 
-- Loads processed CSV (built by scripts/01_build_dataset.py)
-- Day-based evaluation by default: train on non-Friday, test on Friday
-- Trains a RandomForest baseline inside a Pipeline (median imputer + RF)
-- Saves model artifact, feature list, and metrics JSON
+This file exists to split data into training and testing sets, train a classifier model, measure the model and then save metrics and artifacts 
+(model file, feature list) for later
 
-Examples:
-  # Train on sampled dataset
-  python scripts/02_train.py --data data/processed/dataset_sampled.csv --tag sampled
-
-  # Train on full dataset
-  python scripts/02_train.py --data data/processed/dataset_full.csv --tag full
-
-  # If full dataset is too large, train on a subset of rows
-  python scripts/02_train.py --data data/processed/dataset_full.csv --train_sample_rows 1000000 --tag full_1m
 """
 
 from __future__ import annotations

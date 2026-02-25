@@ -1,20 +1,26 @@
 # scripts/01_build_dataset.py
 """
-Build a processed dataset from CIC-IDS2017 raw daily CSV files.
+This file processes the machine-learning-ready dataset from multiple daily flow CSV files into one file to train off of
+The raw CIC-style dataset is split across multiple days of network traffic (Mon-Fri).
+It includes labels as strings that mark traffic as benign, or different attack types.
+Machine learning models are faster to train with a single file, so this script combvines them all into one table with
+    1. Consistent column names
+    2. numeric features (non-numeric values coerced to NaN)
+    3. A binary target column "is_malicious" where 0=BENIGN and 1=anything else
 
-- Loads each day's CSV from data/raw/
-- Creates binary label `is_malicious` from the dataset Label column
-- Drops leaky identifiers (Flow ID, IPs, Timestamp)
-- Converts features to numeric and replaces inf with NaN
-- Adds `source_file` so we can do day-based evaluation later
-- Writes a single combined CSV to data/processed/
+1.This script loads each raw CSV from data/raw, then cleans up column names stripping whitespace
+2. Converts the "Label" column into a binary target "is_malicious" (0=BENIGN, 1=anything else)
+3. Removes columns not used for model training
+4. Converts feature columns to numeric types
+5. Replaces inf values with NaN (we will impute these during training)
+6. adds a "source_file" column to keep track of which original CSV each row came from 
+7. Concatenates all files into one dataset CSV at data/processed/dataset_v1.csv
 
-Usage examples:
-  # Fast dev build (sample per file)
-  python scripts/01_build_dataset.py --sample_per_file 150000 --out data/processed/dataset_sampled.csv
+Design notes:
+  This scripts is used only to prepare the dataset 
+  Missing values are not imputed here, that is handled during training with a scikit-learn imputer so training and inference behavior should stay consistent
+  the source_file is preserved for evaluation purposes, so we can see if the model performs differently on different days of traffic
 
-  # Full build (all rows, streamed)
-  python scripts/01_build_dataset.py --sample_per_file 0 --out data/processed/dataset_full.csv
 """
 
 import argparse
