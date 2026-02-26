@@ -6,3 +6,5 @@ models/
 reports/
 .env
 .DS_Store
+scripts/00_sanity_check.py
+scripts/04_demo.py
