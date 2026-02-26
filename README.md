@@ -2,7 +2,7 @@ First Checkpoint, 2/25/2026
 
 This project is a machine learning based intrusion detection system that looks at network traffic flow and creates an evilness prediction using a machine learning model. The end deliverable goal is to have a CLI-Style interface that allows a user to build a dataset from their own CSV files or other public datasets. Then they can easily train and tune their own machine learning model, with easy adjustment knobs to tune the false-positive noise. Because this project uses more lightweight flow metadata and features of network traffic to produce alerts (instead of raw packets), it's possible to run the IDS on a platform like a Raspberry Pi.  
 
-The CIC-2017 dataset in this project is a flow feature table, meaning each row represents a network flow (a summarized connection) and each column represents a statistic such as flow durection, packet rate, inter-arrival time, TCP flag counts, and destination ports. The dataset also importantly labels traffic as benign or malicious, allowing us to train the model on what malicious network flow looks like (in the dataset). 
+The CIC-2017 dataset in this project is a flow feature table, meaning each row represents a network flow (a summarized connection), and each column represents a statistic such as flow durection, packet rate, inter-arrival time, TCP flag counts, and destination ports. The dataset also importantly labels traffic as benign or malicious, allowing us to train the model on what malicious network flow looks like (in the dataset). 
 
 Building the dataset:
     01_build_dataset.py's purpose is to convert all the CSV's in the dataset into one machine learning ready dataset, it strips down column whitespace, 
