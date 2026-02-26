@@ -1,6 +1,6 @@
 First Checkpoint, 2/25/2026
 
-This project is a machine learning based intrusion detection system that looks at network traffic flow and creates an evilness prediction using a machine learning model. The end deliverable goal is to have a CLI-Style interface that allows a user to build a dataset from their own CSV files, then train a baseline classifier model to distinguish benign from malicious traffic, and lastly fresh traffic logs can be input to the model, and a ranked list of suspicious alerts will be returned with confidence scores. Because this project uses more lightweight flow metadata and features of network traffic to produce alerts (instead of raw packets), it's possible to run the IDS on a platform like a Raspberry Pi. 
+This project is a machine learning based intrusion detection system that looks at network traffic flow and creates an evilness prediction using a machine learning model. The end deliverable goal is to have a CLI-Style interface that allows a user to build a dataset from their own CSV files or other public datasets. Then they can easily train and tune their own machine learning model, with easy adjustment knobs to tune the false-positive noise. Because this project uses more lightweight flow metadata and features of network traffic to produce alerts (instead of raw packets), it's possible to run the IDS on a platform like a Raspberry Pi.  
 
 The CIC-2017 dataset in this project is a flow feature table, meaning each row represents a network flow (a summarized connection) and each column represents a statistic such as flow durection, packet rate, inter-arrival time, TCP flag counts, and destination ports. The dataset also importantly labels traffic as benign or malicious, allowing us to train the model on what malicious network flow looks like (in the dataset). 
 
@@ -18,7 +18,7 @@ Training the model:
 Scanning and using the model:
     03_predict.py's purpose is to use the trained model to create a score CSV and IDS style alerts. 
 		It loads in the model and the model's features and processes the inputted CSV traffic into numeric features. 
-		Then it Aligns the feature scheme with the training scheme, and scores each row with a prediction. 
+		Then it aligns the feature scheme with the training scheme, and scores each row with a prediction. 
 		The threshehold of the model dictates whether or not there is an alert. 
 		This outputs a probability of maliciousness score, a predicted label, and any other metadata fields that were included in the input.
 		This is still very limited, because the CIC dataset does not include source IPs and destination IPs, in a real SOC environment, pfSense firewall logs would provide IP context. 
