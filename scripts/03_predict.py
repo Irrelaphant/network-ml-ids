@@ -43,6 +43,7 @@ from __future__ import annotations
 from pathlib import Path
 import argparse
 import json
+import sys
 import joblib
 import pandas as pd
 import numpy as np
@@ -109,7 +110,16 @@ def severity_from_prob(prob: float, threshold: float) -> str:
         return "MED"
     return "LOW"
 
-
+def prob_bar(prob: float, width: int = 20) -> str:
+    """
+    Return a compact ASCII probability bar for terminal output.
+    Example: prob=0.82 → [████████████████    ] 82%
+    """
+    filled = int(round(prob * width))
+    bar = "█" * filled + " " * (width - filled)
+    pct = f"{prob * 100:5.1f}%"
+    return f"[{bar}] {pct}"
+ 
 def main():
     parser = argparse.ArgumentParser(description="Score a CIC-style flow CSV and output IDS alerts.")
     parser.add_argument("--input", required=True, help="Raw CIC CSV to score")
@@ -166,30 +176,89 @@ def main():
     out.to_csv(out_path, index=False)
 
     if not args.quiet:
-        total = len(df_raw)
+        total  = len(df_raw)
         alerts = int((pred == 1).sum())
-        rate = (alerts / total * 100.0) if total else 0.0
-        high = int((out["severity"] == "HIGH").sum()) if len(out) else 0
-        med = int((out["severity"] == "MED").sum()) if len(out) else 0
-
-        print("\nML-IDS Scan Summary")
-        print("-------------------")
-        print(f"Input: {args.input}")
-        print(f"Model: {model_path}")
-        print(f"Threshold: {args.threshold}")
-        print(f"Flows scored: {total:,}")
-        print(f"Alerts: {alerts:,} ({rate:.4f}%)")
-        print(f"Severity (in written output): HIGH={high:,}  MED={med:,}")
-
-        # Show top 10 alerts (or top 10 scored rows if not alerts_only)
-        preview = out.head(10)
+        rate   = (alerts / total * 100.0) if total else 0.0
+        high   = int((out["severity"] == "HIGH").sum()) if len(out) else 0
+        med    = int((out["severity"] == "MED").sum())  if len(out) else 0
+        low    = int((out["severity"] == "LOW").sum())  if len(out) else 0
+ 
+        # NaN diagnostic — warns if the input format may be mismatched
+        nan_rate = float(X.isna().mean().mean())
+        nan_warn = ""
+        if nan_rate > 0.20:
+            worst_cols = X.isna().mean().sort_values(ascending=False).head(3)
+            col_list = ", ".join(f"{c} ({v:.0%})" for c, v in worst_cols.items())
+            nan_warn = f"\n  ⚠  High NaN rate ({nan_rate:.0%}) — possible format mismatch. Top cols: {col_list}"
+ 
+        sep = "─" * 46
+ 
+        print(f"\n{'═' * 46}")
+        print(f"  ML-IDS Scan Report")
+        print(f"{'═' * 46}")
+        print(f"  Input   : {args.input}")
+        print(f"  Model   : {model_path}")
+        print(f"  Output  : {out_path}")
+        print(sep)
+        print(f"  Flows scored  : {total:>10,}")
+        print(f"  Alerts fired  : {alerts:>10,}  ({rate:.2f}%)")
+        print(f"  Threshold     : {args.threshold:>10.2f}")
+        print(sep)
+        print(f"  {'HIGH':>6}  {'MED':>6}  {'LOW':>6}")
+        print(f"  {high:>6,}  {med:>6,}  {low:>6,}")
+        if nan_warn:
+            print(nan_warn)
+        print(sep)
+ 
+        # Top results table with probability bar
+        preview = out[out["pred_is_malicious"] == 1].head(10)
+        if len(preview) == 0:
+            preview = out.head(10)
+ 
         if len(preview):
-            print("\nTop results:")
-            print(preview.to_string(index=False))
+            # Build display columns — show whatever meta is available
+            display_cols = []
+            for col in ["Src IP", "Dst IP", "Src Port", "Dst Port", "Protocol"]:
+                if col in preview.columns:
+                    display_cols.append(col)
+ 
+            print(f"\n  Top {len(preview)} results (sorted by suspicion):\n")
+ 
+            # Header
+            meta_w = 18  # fixed width per meta column
+            hdr_meta = "".join(f"  {c:<{meta_w}}" for c in display_cols)
+            print(f"  {'SEV':<5}  {'PROB BAR':<30}  {'SCORE':<7}{hdr_meta}")
+            print(f"  {'─'*4}  {'─'*28}  {'─'*6}{('  ' + '─'*meta_w) * len(display_cols)}")
+ 
+            for _, row in preview.iterrows():
+                prob_val = float(row["prob_malicious"])
+                sev      = str(row["severity"])
+                bar      = prob_bar(prob_val, width=20)
+                score    = f"{prob_val:.4f}"
+ 
+                # Severity coloring (ANSI, degrades gracefully if no tty)
+                sev_display = sev
+                if hasattr(sys.stdout, "isatty") and sys.stdout.isatty():
+                    if sev == "HIGH":
+                        sev_display = f"\033[31m{sev}\033[0m"   # red
+                    elif sev == "MED":
+                        sev_display = f"\033[33m{sev}\033[0m"   # yellow
+                    else:
+                        sev_display = f"\033[2m{sev}\033[0m"    # dim
+ 
+                meta_str = ""
+                for col in display_cols:
+                    val = str(row.get(col, "N/A"))
+                    meta_str += f"  {val:<{meta_w}}"
+ 
+                print(f"  {sev_display:<5}  {bar:<30}  {score:<7}{meta_str}")
+ 
         else:
-            print("\nNo rows written (try lowering threshold or disable --alerts_only).")
-
-    print(f"\n[+] Wrote: {out_path}")
+            print("\n  No rows to preview. Try lowering --threshold or removing --alerts_only.")
+ 
+        print(f"\n{'═' * 46}")
+ 
+        print(f"\n[+] Wrote: {out_path}")
 
 
 if __name__ == "__main__":

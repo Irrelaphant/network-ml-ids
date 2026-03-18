@@ -1,0 +1,62 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# ML-IDS Configuration
+# Edit this file once. All ids.py commands read these defaults.
+# Any CLI flag you pass overrides the value here.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Dataset paths ─────────────────────────────────────────────────────────────
+
+# Where your raw CIC-IDS CSV files live (one per day of traffic)
+raw_dir: "data/raw"
+
+# Where the processed/combined dataset will be written
+# The tag below is appended automatically: dataset_v1.csv
+processed_path: "data/processed/dataset_v1.csv"
+
+# ── Model settings ────────────────────────────────────────────────────────────
+
+# Tag used for all artifact filenames: rf_v1.joblib, features_v1.json, metrics_v1.json
+# Change this when experimenting so you don't overwrite a working model
+model_tag: "v1"
+
+# Which day's filename keyword separates test from train
+# e.g. "Friday" means any CSV whose filename contains "Friday" is held out for testing
+test_day_keyword: "Friday"
+
+# Random Forest: number of decision trees
+n_estimators: 300
+
+# 'balanced' compensates for CIC's heavy benign-traffic imbalance — recommended
+# Set to 'none' to disable
+class_weight: "balanced"
+
+# Reproducibility seed
+seed: 42
+
+# Training set downsampling (0 = use all rows — recommended for final training)
+# Set to e.g. 200000 to speed up experimental runs
+train_sample_rows: 0
+
+# ── Scan / inference settings ─────────────────────────────────────────────────
+
+# Probability threshold for triggering an alert
+# Lower = more alerts (higher false-positive rate)
+# Higher = fewer alerts (higher missed-detection rate)
+# Recommended starting point: 0.3
+threshold: 0.3
+
+# Default output path for the scored alerts CSV
+output: "reports/alerts.csv"
+
+# If > 0, only write the top N highest-probability rows to the output CSV
+# 0 = write all rows
+top: 0
+
+# ── Dataset build settings ────────────────────────────────────────────────────
+
+# Max rows to keep per raw CSV file during build (0 = keep all rows)
+# Use 150000 for faster iteration; 0 for full training runs
+sample_per_file: 150000
+
+# Rows to read per chunk during CSV processing (tune for your RAM)
+chunksize: 200000
