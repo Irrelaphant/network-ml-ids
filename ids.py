@@ -1,18 +1,14 @@
-#!/usr/bin/env python3
-"""
-ids.py — ML-IDS Command Line Interface
-=======================================
-Single entrypoint for the ML-powered Intrusion Detection System.
+# IDS: ML-Powered Network Intrusion Detection System
 
-Usage:
-    python ids.py build              # Build dataset from raw CSVs
-    python ids.py train              # Train the classifier
-    python ids.py scan --input FILE  # Score a traffic CSV and generate alerts
-    python ids.py status             # Show system state at a glance
+#    Usage:
+#    python ids.py build              # Build dataset from raw CSVs
+#    python ids.py train              # Train the classifier
+#    python ids.py scan --input FILE  # Score a traffic CSV and generate alerts
+#    python ids.py status             # Show system state at a glance
 
-Config is loaded from config.yaml in the same directory.
-CLI flags always override config values.
-"""
+# Config is loaded from config.yaml in the same directory.
+# CLI flags always override config values.
+
 
 import argparse
 import sys
