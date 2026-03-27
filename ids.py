@@ -25,8 +25,9 @@ def load_config(path: str = "config.yaml") -> dict:
         if cfg_path.exists():
             with open(cfg_path) as f:
                 return yaml.safe_load(f) or {}
+    # if PyYAML isn't installed, we return an empty config file and just rely on CLI flags
     except ImportError:
-        pass  # PyYAML optional — CLI flags still work
+        pass  
     return {}
 
 
@@ -45,7 +46,7 @@ BANNER = r"""
  |_|  |_|_____|_|___|____/____/
 
   ML-Powered Network Intrusion Detection System
-  Capstone Project  ·  github.com/Irrelaphant/network-ml-ids
+  Capstone Project  -  github.com/Irrelaphant/network-ml-ids
 """
  
 SENSITIVITY_PRESETS = {

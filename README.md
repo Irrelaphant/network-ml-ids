@@ -187,17 +187,3 @@ network-ml-ids/
 
 ---
 
-## Limitations & roadmap
-
-- **No source/destination IPs** — CIC-IDS-2017 strips IP addresses. CIC-IDS-2018 includes them and is the planned next dataset upgrade.
-- **Static model** — the model is trained offline and doesn't update on new traffic. Online learning is a future goal.
-- **pfSense integration** — planned for Checkpoint 3: live traffic ingestion via nfstream/CICFlowMeter pointed at a pfSense firewall export.
-- **Dataset scope** — one week of lab traffic. More diverse training data will improve generalization.
-
----
-
-## Checkpoint progress
-
-- [x] Checkpoint 1 — Dataset pipeline, baseline Random Forest, threshold-based alerting
-- [x] Checkpoint 2 — CLI wrapper (`ids.py`), sensitivity presets, polished scan output, quickstart README
-- [ ] Checkpoint 3 — CIC-IDS-2018 integration, pfSense live traffic, per-attack-type metrics
