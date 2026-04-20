@@ -1,6 +1,6 @@
 # ML-IDS — Machine Learning Intrusion Detection System
 
-A lightweight, ML-powered network intrusion detection system that scores network flow traffic and generates ranked alerts. Built on the CIC-IDS-2017 dataset using a Random Forest classifier. Designed to run on standard hardware or a Raspberry Pi 4.
+A lightweight, ML-powered network intrusion detection system that scores network flow traffic and generates ranked alerts. Built on the CIC-IDS-2017 dataset using a Random Forest classifier. Designed to run on Raspberry Pi-5 4gb.
 
 ---
 
