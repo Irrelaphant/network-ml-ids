@@ -167,7 +167,8 @@ def write_csv(rows: list[dict], out_path: str):
  
     print(f"[+] Wrote {len(rows)} device rows to {out_path}")
  
- 
+# a terminal summary to print out the key features for each device in a human-readable format, sorted by suspiciousness
+# useful without having to dig into the CSV 
 def print_summary(rows: list[dict]):
     """Print a quick human-readable summary to terminal."""
     if not rows:
